@@ -420,6 +420,15 @@ let S = {
 
 function loadLocal() {
   try {
+    // 이전 키(gn-data)에서 마이그레이션
+    const old = localStorage.getItem('gn-data');
+    if (old) {
+      const p = JSON.parse(old);
+      S.units = p.units||[]; S.rvMem = p.rvMem||{}; S.driveFileId = p.driveFileId||null;
+      localStorage.setItem('gn2', JSON.stringify({ units: S.units, rvMem: S.rvMem, driveFileId: S.driveFileId }));
+      localStorage.removeItem('gn-data');
+      return;
+    }
     const d = localStorage.getItem('gn2');
     if (d) { const p = JSON.parse(d); S.units = p.units||[]; S.rvMem = p.rvMem||{}; S.driveFileId = p.driveFileId||null; }
   } catch(e) {}
@@ -513,11 +522,7 @@ function renderUnits() {
       <div class="unit-arr">›</div>
     </div>`;
   }).join('');
-  return `<div class="prog-wrap">
-    <div class="st-prog-bar"><div class="st-prog-fill" style="width:${pct}%"></div></div>
-    <div class="prog-meta"><span>${done} / ${total} units 완료</span><span class="prog-pct">${pct}%</span></div>
-  </div>
-  <div class="unit-list">${rows}</div>
+  return `<div class="unit-list">${rows}</div>
   <div class="add-unit-row" onclick="addUnitModal()">+ 유닛 추가</div>`;
 }
 
