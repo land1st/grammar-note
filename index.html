@@ -11,7 +11,7 @@
   --bg:       #f1efe8;
   --bg-card:  #ffffff;
   --bg-active:#eae8e3;
-  --header:   #3d3b37;
+  --header:   #0F4C81;
   --orange:   #f0974a;
   --orange-dk:#ba7517;
   --orange-lt:#faeeda;
@@ -27,11 +27,11 @@
   --r-lg: 16px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: #2c2c2a; }
+html, body { height: 100%; background: var(--bg); }
 body { font-family: var(--font); color: var(--g1); }
 
 .shell {
-  max-width: 430px;
+  max-width: 480px;
   margin: 0 auto;
   height: 100dvh;
   display: flex;
@@ -39,6 +39,7 @@ body { font-family: var(--font); color: var(--g1); }
   background: var(--bg);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.12);
 }
 
 /* ── HEADER ── */
@@ -333,8 +334,21 @@ body { font-family: var(--font); color: var(--g1); }
 
   <div class="hd" id="hd">
     <div id="hd-main">
-      <div class="hd-title">Grammar Note</div>
-      <div class="hd-sub">나의 문법 노트</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="3" width="16" height="22" rx="2" fill="#fff" fill-opacity="0.15" stroke="#fff" stroke-width="1.5"/>
+          <rect x="7" y="3" width="3" height="22" rx="1" fill="#fff" fill-opacity="0.25"/>
+          <line x1="9" y1="9" x2="17" y2="9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="9" y1="13" x2="17" y2="13" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="9" y1="17" x2="14" y2="17" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+          <circle cx="21" cy="20" r="5" fill="#f0974a"/>
+          <text x="21" y="24" text-anchor="middle" font-size="7" font-weight="700" fill="#fff" font-family="serif">A</text>
+        </svg>
+        <div>
+          <div class="hd-title">Basic Grammar in Use</div>
+          <div class="hd-sub">나의 문법 노트</div>
+        </div>
+      </div>
     </div>
     <div id="hd-unit" class="hidden">
       <div class="hd-back" onclick="goBack()">‹ 목록으로</div>
