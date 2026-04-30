@@ -389,11 +389,15 @@ body { font-family: var(--font); color: var(--g1); }
 <div class="toast" id="toast"></div>
 
 <script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 <script>
 const CLIENT_ID = '494883038886-9rvmh42uk2m5qbquusqahfroreidaej7.apps.googleusercontent.com';
 const SCOPES    = 'https://www.googleapis.com/auth/drive.appdata';
 const FILE_NAME = 'grammar-note-data.json';
 const ORANGE    = '#f0974a', GRAY = '#888780';
+
+let tokenClient = null;
+let accessToken = null;
 
 let S = {
   screen: 'units', unit: null, tab: 'note',
@@ -691,54 +695,92 @@ function importData(e) {
   r.readAsText(file);
 }
 
-/* ── GOOGLE DRIVE ── */
+/* ── GOOGLE DRIVE (GIS 방식) ── */
 function initGapi() {
-  gapi.load('client:auth2', () => {
+  gapi.load('client', () => {
     gapi.client.init({
-      clientId: CLIENT_ID, scope: SCOPES,
       discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
     }).then(() => {
       S.gapiReady = true;
-      if (gapi.auth2.getAuthInstance().isSignedIn.get()) { S.driveOn=true; loadFromDrive(); }
-      if (S.screen==='settings') render();
-    }).catch(()=>{});
+      // 저장된 토큰 복원 시도
+      const saved = sessionStorage.getItem('gn-token');
+      if (saved) {
+        accessToken = saved;
+        gapi.client.setToken({ access_token: accessToken });
+        S.driveOn = true;
+        loadFromDrive();
+        if (S.screen === 'settings') render();
+      }
+    }).catch(() => {});
+  });
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { toast('로그인이 취소됐어요'); return; }
+      accessToken = resp.access_token;
+      sessionStorage.setItem('gn-token', accessToken);
+      gapi.client.setToken({ access_token: accessToken });
+      S.driveOn = true;
+      toast('Drive에 연결됐어요!');
+      loadFromDrive();
+      render();
+    }
   });
 }
 function handleDrive() {
-  if (!S.gapiReady) { toast('Google API 로딩 중...'); return; }
+  if (!S.gapiReady) { toast('잠시 후 다시 시도해주세요'); return; }
   if (S.driveOn) {
-    gapi.auth2.getAuthInstance().signOut().then(()=>{ S.driveOn=false; toast('Drive 연결 해제됐어요'); render(); });
+    google.accounts.oauth2.revoke(accessToken, () => {});
+    accessToken = null;
+    sessionStorage.removeItem('gn-token');
+    gapi.client.setToken(null);
+    S.driveOn = false;
+    toast('Drive 연결 해제됐어요');
+    render();
   } else {
-    gapi.auth2.getAuthInstance().signIn().then(()=>{ S.driveOn=true; toast('Drive에 연결됐어요!'); loadFromDrive(); render(); }).catch(()=>toast('로그인이 취소됐어요'));
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   }
 }
 function syncNow() { if (S.driveOn) saveToDrive(); }
 function saveToDrive() {
-  if (!S.driveOn || !S.gapiReady) return;
-  const content = JSON.stringify({units:S.units,rvMem:S.rvMem});
+  if (!S.driveOn || !accessToken) return;
+  const body = JSON.stringify({units: S.units, rvMem: S.rvMem});
   if (S.driveFileId) {
-    gapi.client.request({ path:'/upload/drive/v3/files/'+S.driveFileId, method:'PATCH', params:{uploadType:'media'}, headers:{'Content-Type':'application/json'}, body:content }).then(()=>toast('Drive에 저장됐어요!'));
+    fetch('https://www.googleapis.com/upload/drive/v3/files/' + S.driveFileId + '?uploadType=media', {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body
+    }).then(() => toast('Drive에 저장됐어요!'));
   } else {
-    const bd = '-------3141592653';
-    const meta = {name:FILE_NAME,parents:['appDataFolder']};
-    const body = '\r\n--'+bd+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+bd+'\r\nContent-Type: application/json\r\n\r\n'+content+'\r\n--'+bd+'--';
-    gapi.client.request({ path:'/upload/drive/v3/files', method:'POST', params:{uploadType:'multipart'}, headers:{'Content-Type':'multipart/related; boundary="-------3141592653"'}, body }).then(res=>{ S.driveFileId=res.result.id; save(); toast('Drive에 저장됐어요!'); });
+    const meta = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
+    const boundary = 'grammar_note_boundary';
+    const multipart = '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + meta +
+      '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + body + '\r\n--' + boundary + '--';
+    fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
+      body: multipart
+    }).then(r => r.json()).then(d => {
+      S.driveFileId = d.id; save(); toast('Drive에 저장됐어요!');
+    });
   }
 }
 function loadFromDrive() {
-  if (!S.driveOn || !S.gapiReady) return;
-  gapi.client.drive.files.list({ spaces:'appDataFolder', q:`name='${FILE_NAME}'`, fields:'files(id)' }).then(res => {
-    const files = res.result.files;
+  if (!S.driveOn || !accessToken) return;
+  fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='" + FILE_NAME + "'&fields=files(id)", {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  }).then(r => r.json()).then(d => {
+    const files = d.files;
     if (files && files.length) {
       S.driveFileId = files[0].id; save();
-      gapi.client.drive.files.get({ fileId:S.driveFileId, alt:'media' }).then(r => {
-        try {
-          const d = typeof r.result==='string' ? JSON.parse(r.result) : r.result;
-          if (d.units) { S.units=d.units; S.rvMem=d.rvMem||{}; save(); render(); toast('Drive에서 불러왔어요!'); }
-        } catch(e) {}
-      });
+      fetch('https://www.googleapis.com/drive/v3/files/' + S.driveFileId + '?alt=media', {
+        headers: { 'Authorization': 'Bearer ' + accessToken }
+      }).then(r => r.json()).then(data => {
+        if (data.units) { S.units = data.units; S.rvMem = data.rvMem || {}; save(); render(); toast('Drive에서 불러왔어요!'); }
+      }).catch(() => {});
     }
-  });
+  }).catch(() => {});
 }
 
 loadLocal();
