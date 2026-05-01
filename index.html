@@ -10,7 +10,7 @@
   --bg:        #f1efe8;
   --card:      #ffffff;
   --active:    #eae8e3;
-  --blue:      #0F4C81;
+  --blue:      #4B5B7C;
   --orange:    #f0974a;
   --orange-dk: #ba7517;
   --orange-lt: #faeeda;
@@ -61,7 +61,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
   background: var(--blue);
   border-radius: var(--r);
 }
-.prog-bar  { height: 5px; background: rgba(255,255,255,0.25); border-radius: 99px; overflow: hidden; }
+.prog-bar  { height: 10px; background: rgba(255,255,255,0.25); border-radius: 99px; overflow: hidden; }
 .prog-fill { height: 100%; border-radius: 99px; background: #fff; transition: width 0.4s; }
 .prog-meta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: rgba(255,255,255,0.7); }
 .prog-pct  { color: #fff; font-weight: 700; }
@@ -71,7 +71,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
   padding: 10px 0 12px;
   border-top: 1px solid var(--g5);
 }
-.hd-back  { font-size: 13px; color: var(--blue); margin-bottom: 5px; cursor: pointer; display: inline-block; }
+.hd-back  { font-size: 13px; color: var(--blue); margin-bottom: 5px; cursor: pointer; display: block; text-align: right; }
 .hd-unit-no  { font-size: 11px; color: var(--g3); font-weight: 500; }
 .hd-unit-ttl { font-size: 16px; font-weight: 700; color: var(--g1); margin-top: 2px; }
 
@@ -136,7 +136,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
 .unit-meta.ing { color: var(--g2); font-weight: 500; }
 .unit-arr  { font-size: 16px; color: var(--g4); flex-shrink: 0; }
 .add-unit-row {
-  margin: 7px 12px 14px;
+  margin: 7px 12px 6px;
   padding: 13px;
   border: 1.5px dashed var(--g4);
   border-radius: var(--r);
@@ -144,9 +144,19 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
   cursor: pointer;
 }
 .add-unit-row:active { background: var(--g6); }
+.page-nav { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 10px 12px 14px; }
+.page-btn { padding: 7px 16px; border-radius: 8px; border: 1px solid var(--g4); font-size: 13px; color: var(--g2); background: var(--card); cursor: pointer; font-family: var(--font); }
+.page-btn:disabled { opacity: 0.35; cursor: default; }
+.page-info { font-size: 12px; color: var(--g3); }
 
 /* ── 노트 본문 ── */
 .nb { padding: 0 15px 15px; }
+.unit-title-box {
+  background: var(--card); border: 1px solid var(--g5);
+  border-radius: var(--r); padding: 13px 14px; margin-bottom: 14px;
+}
+.unit-title-no { font-size: 11px; color: var(--g3); font-weight: 500; letter-spacing: 0.4px; }
+.unit-title-nm { font-size: 17px; font-weight: 700; color: var(--g1); margin-top: 3px; letter-spacing: -0.3px; }
 .sec-lbl { font-size: 11px; font-weight: 700; color: var(--g3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 7px; margin-top: 16px; }
 .sec-lbl:first-child { margin-top: 0; }
 .grammar-ta {
@@ -455,7 +465,7 @@ function navigate(scr) {
 function updateNav(active) {
   ['units','review','stats','settings'].forEach(id => {
     document.getElementById('nav-' + id).classList.toggle('on', id === active);
-    document.getElementById('nl-' + id).style.color = id === active ? ORANGE : GRAY;
+    document.getElementById('nl-' + id).style.color = id === active ? BLUE : GRAY;
   });
   const map = {
     units:    [['ni1a','fill'],['ni1b','fill'],['ni1c','fill']],
@@ -463,7 +473,7 @@ function updateNav(active) {
     stats:    [['ni3a','fill'],['ni3b','fill'],['ni3c','fill']],
     settings: [['ni4a','stroke'],['ni4b','stroke']]
   };
-  const BLUE = '#0F4C81';
+  const BLUE = '#4B5B7C';
   Object.entries(map).forEach(([id, els]) => els.forEach(([eid, attr]) => {
     const el = document.getElementById(eid);
     if (el) el.setAttribute(attr, id === active ? BLUE : GRAY);
@@ -510,7 +520,12 @@ function renderUnits() {
   const total = S.units.length;
   const done  = S.units.filter(u => u.done).length;
   const pct   = total ? Math.round(done / total * 100) : 0;
-  const rows  = S.units.map((u, i) => {
+  const PAGE  = 10;
+  if (!S.unitPage) S.unitPage = 0;
+  const start = S.unitPage * PAGE;
+  const end   = Math.min(start + PAGE, total);
+  const rows  = S.units.slice(start, end).map((u, idx) => {
+    const i   = start + idx;
     const exN = (u.examples||[]).length;
     const ing = !u.done && (u.note || exN > 0);
     return `<div class="unit-card ${ing?'active':''} ${u.done?'done-card':''}" onclick="openUnit(${i})">
@@ -522,22 +537,34 @@ function renderUnits() {
       <div class="unit-arr">›</div>
     </div>`;
   }).join('');
+  const totalPages = Math.ceil(total / PAGE) || 1;
+  const pageNav = totalPages > 1 ? `<div class="page-nav">
+    <button class="page-btn" onclick="setUnitPage(${S.unitPage-1})" ${S.unitPage===0?'disabled':''}>‹ 이전</button>
+    <span class="page-info">${S.unitPage+1} / ${totalPages}</span>
+    <button class="page-btn" onclick="setUnitPage(${S.unitPage+1})" ${end>=total?'disabled':''}>다음 ›</button>
+  </div>` : '';
   return `<div class="unit-list">${rows}</div>
-  <div class="add-unit-row" onclick="addUnitModal()">+ 유닛 추가</div>`;
+  <div class="add-unit-row" onclick="addUnitModal()">+ 유닛 추가</div>
+  ${pageNav}`;
 }
 
 function renderDetail() {
   const u = S.units[S.unit];
-  const exHtml = (u.examples||[]).map((ex,i)=>
+  const i = S.unit;
+  const exHtml = (u.examples||[]).map((ex,ei)=>
     `<div class="ex-card">
-      <span class="ex-del" onclick="delEx(${i})">×</span>
+      <span class="ex-del" onclick="delEx(${ei})">×</span>
       <div class="ex-en">${esc(ex.en)}</div>
       <div class="ex-kr">${esc(ex.kr)}</div>
     </div>`).join('');
   return `<div class="nb">
-    <div class="sec-lbl">핵심 포인트</div>
+    <div class="unit-title-box">
+      <div class="unit-title-no">Unit ${i+1}</div>
+      <div class="unit-title-nm">${esc(u.title)}</div>
+    </div>
+    <div class="sec-lbl" style="padding-left:2px">핵심 포인트</div>
     <textarea class="grammar-ta" id="note-ta" placeholder="문법 핵심 내용을 입력하세요..." oninput="autoNote()">${esc(u.note||'')}</textarea>
-    <div class="sec-lbl">예문</div>
+    <div class="sec-lbl" style="padding-left:2px">예문</div>
     ${exHtml}
     <div class="ex-form" id="ex-form" style="display:none;flex-direction:column;gap:8px;background:var(--card);border:1px solid var(--blue);border-radius:8px;padding:12px 13px;margin-bottom:7px">
       <input class="ex-inp" id="ei-en" placeholder="영어 예문" />
@@ -660,6 +687,13 @@ function delEx(i) { S.units[S.unit].examples.splice(i,1); save(); render(); }
 function toggleDone() { S.units[S.unit].done = !S.units[S.unit].done; save(); render(); }
 function setFilter(f) { S.rvFilter=f; S.rvIdx=0; S.rvRevealed=false; render(); }
 function toggleReveal() { S.rvRevealed=!S.rvRevealed; render(); }
+function setUnitPage(p) {
+  const total = S.units.length;
+  const totalPages = Math.ceil(total / 10) || 1;
+  if (p < 0 || p >= totalPages) return;
+  S.unitPage = p;
+  render();
+}
 function markRv(r) {
   const all = [];
   S.units.forEach((u,ui)=>(u.examples||[]).forEach((ex,ei)=>all.push({ui,ei})));
