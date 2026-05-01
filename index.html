@@ -415,7 +415,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
 const CLIENT_ID = '494883038886-9rvmh42uk2m5qbquusqahfroreidaej7.apps.googleusercontent.com';
 const SCOPES    = 'https://www.googleapis.com/auth/drive.appdata';
 const FILE_NAME = 'grammar-note-data.json';
-const ORANGE    = '#f0974a', GRAY = '#888780';
+const ORANGE    = '#f0974a', GRAY = '#888780', BLUE = '#4B5B7C';
 
 let tokenClient = null;
 let accessToken = null;
@@ -480,7 +480,6 @@ function updateNav(active) {
     stats:    [['ni3a','fill'],['ni3b','fill'],['ni3c','fill']],
     settings: [['ni4a','stroke'],['ni4b','stroke']]
   };
-  const BLUE = '#4B5B7C';
   Object.entries(map).forEach(([id, els]) => els.forEach(([eid, attr]) => {
     const el = document.getElementById(eid);
     if (el) el.setAttribute(attr, id === active ? BLUE : GRAY);
