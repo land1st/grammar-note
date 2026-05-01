@@ -528,36 +528,27 @@ function renderUnits() {
 
 function renderDetail() {
   const u = S.units[S.unit];
-  if (S.tab === 'note') {
-    return `<div class="nb">
-      <div class="sec-lbl">핵심 포인트</div>
-      <textarea class="grammar-ta" id="note-ta" placeholder="문법 핵심 내용을 입력하세요..." oninput="autoNote()">${esc(u.note||'')}</textarea>
-    </div>`;
-  }
-  if (S.tab === 'examples') {
-    const exHtml = (u.examples||[]).map((ex,i)=>
-      `<div class="ex-card">
-        <span class="ex-del" onclick="delEx(${i})">×</span>
-        <div class="ex-en">${esc(ex.en)}</div>
-        <div class="ex-kr">${esc(ex.kr)}</div>
-      </div>`).join('');
-    return `<div class="nb">
-      ${exHtml}
-      <div class="ex-form hidden flex" id="ex-form" style="display:none;flex-direction:column;gap:8px">
-        <input class="ex-inp" id="ei-en" placeholder="영어 예문" />
-        <input class="ex-inp" id="ei-kr" placeholder="한국어 해석" />
-        <div class="ex-form-btns">
-          <button class="btn-cancel" onclick="render()">취소</button>
-          <button class="btn-save" onclick="saveEx()">저장</button>
-        </div>
-      </div>
-      <div class="add-ex-btn" id="add-ex-btn" onclick="showExForm()">+ 예문 추가</div>
-    </div>`;
-  }
+  const exHtml = (u.examples||[]).map((ex,i)=>
+    `<div class="ex-card">
+      <span class="ex-del" onclick="delEx(${i})">×</span>
+      <div class="ex-en">${esc(ex.en)}</div>
+      <div class="ex-kr">${esc(ex.kr)}</div>
+    </div>`).join('');
   return `<div class="nb">
-    <div class="sec-lbl">유닛 완료 처리</div>
-    <p style="font-size:14px;color:var(--g2);line-height:1.75;margin-bottom:18px">완료로 표시하면 목록에 체크 표시가 됩니다. 언제든지 해제할 수 있어요.</p>
-    <button class="done-cta ${u.done?'unmark':'mark'}" onclick="toggleDone()">${u.done?'✓ 완료됨 (탭하면 해제)':'이 유닛 완료로 표시'}</button>
+    <div class="sec-lbl">핵심 포인트</div>
+    <textarea class="grammar-ta" id="note-ta" placeholder="문법 핵심 내용을 입력하세요..." oninput="autoNote()">${esc(u.note||'')}</textarea>
+    <div class="sec-lbl">예문</div>
+    ${exHtml}
+    <div class="ex-form" id="ex-form" style="display:none;flex-direction:column;gap:8px;background:var(--card);border:1px solid var(--blue);border-radius:8px;padding:12px 13px;margin-bottom:7px">
+      <input class="ex-inp" id="ei-en" placeholder="영어 예문" />
+      <input class="ex-inp" id="ei-kr" placeholder="한국어 해석" />
+      <div class="ex-form-btns">
+        <button class="btn-cancel" onclick="render()">취소</button>
+        <button class="btn-save" onclick="saveEx()">저장</button>
+      </div>
+    </div>
+    <div class="add-ex-btn" id="add-ex-btn" onclick="showExForm()">+ 예문 추가</div>
+    <button class="done-cta ${u.done?'unmark':'mark'}" onclick="toggleDone()" style="margin-top:10px">${u.done?'✓ 완료됨 (탭하면 해제)':'이 유닛 완료로 표시'}</button>
   </div>`;
 }
 
