@@ -488,9 +488,6 @@ function updateNav(active) {
 }
 function openUnit(i) {
   S.unit = i; S.tab = 'note'; S.screen = 'unit-detail';
-  const u = S.units[i];
-  document.getElementById('hd-unit-no').textContent = 'UNIT ' + (i + 1);
-  document.getElementById('hd-unit-ttl').textContent = u.title;
   document.getElementById('hd-unit-bar').classList.remove('hidden');
   render(); saveScreen();
 }
