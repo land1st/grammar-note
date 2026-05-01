@@ -116,7 +116,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
   transition: transform 0.12s;
 }
 .unit-card:active { transform: scale(0.98); }
-.unit-card.active { background: var(--active); }
+
 .unit-card.done-card { opacity: 0.68; }
 .chk {
   width: 20px; height: 20px; border-radius: 50%;
@@ -335,6 +335,31 @@ html, body { height: 100%; background: var(--bg); font-family: var(--font); colo
 }
 .toast.show { opacity: 1; }
 .hidden { display: none !important; }
+
+/* ── 온보딩 ── */
+.ob-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 300; display: flex; align-items: flex-end; justify-content: center;
+}
+.ob-sheet {
+  background: var(--card); border-radius: 20px 20px 0 0;
+  padding: 28px 24px calc(32px + env(safe-area-inset-bottom));
+  width: 100%; max-width: 480px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  animation: slideUp 0.25s ease;
+}
+.ob-icon { width: 64px; height: 64px; border-radius: 16px; background: var(--blue); display: flex; align-items: center; justify-content: center; }
+.ob-step { font-size: 11px; font-weight: 700; color: var(--g3); letter-spacing: 0.5px; text-transform: uppercase; }
+.ob-title { font-size: 20px; font-weight: 700; color: var(--g1); text-align: center; letter-spacing: -0.3px; }
+.ob-desc { font-size: 14px; color: var(--g2); text-align: center; line-height: 1.75; }
+.ob-dots { display: flex; gap: 7px; }
+.ob-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--g5); }
+.ob-dot.on { background: var(--blue); }
+.ob-btn {
+  width: 100%; padding: 14px; border-radius: 10px;
+  border: none; font-size: 15px; font-weight: 700; color: #fff;
+  background: var(--blue); cursor: pointer; font-family: var(--font);
+}
 </style>
 </head>
 <body>
@@ -530,12 +555,11 @@ function renderUnits() {
   const rows  = S.units.slice(start, end).map((u, idx) => {
     const i   = start + idx;
     const exN = (u.examples||[]).length;
-    const ing = !u.done && (u.note || exN > 0);
-    return `<div class="unit-card ${ing?'active':''} ${u.done?'done-card':''}" onclick="openUnit(${i})">
+    return `<div class="unit-card ${u.done?'done-card':''}" onclick="openUnit(${i})">
       <div class="chk ${u.done?'done':''}"></div>
       <div class="unit-info">
         <div class="unit-nm">Unit ${i+1} · ${esc(u.title)}</div>
-        <div class="unit-meta ${ing&&!u.done?'ing':''}">${u.done?'완료':ing?'진행중':'미시작'}${exN?' · 예문 '+exN+'개':''}</div>
+        <div class="unit-meta">${u.done?'완료':'미시작'}${exN?' · 예문 '+exN+'개':''}</div>
       </div>
       <div class="unit-arr">›</div>
     </div>`;
@@ -592,7 +616,12 @@ function renderReview() {
   </div>`;
   if (!list.length) return `<div class="rv-wrap">${chips}<div class="rv-empty">예문이 없어요.<br>유닛 노트에서 예문을 추가해보세요!</div></div>`;
   if (S.rvIdx >= list.length) S.rvIdx = 0;
-  const cur = list[S.rvIdx];
+  if (!S.rvRandomIdx || S.rvRandomIdx.length !== list.length) {
+    S.rvRandomIdx = list.map((_,i)=>i).sort(()=>Math.random()-0.5);
+    S.rvRandomPos = 0;
+  }
+  if (S.rvRandomPos >= S.rvRandomIdx.length) S.rvRandomPos = 0;
+  const cur = list[S.rvRandomIdx[S.rvRandomPos]];
   const doneCnt  = list.filter(e=>S.rvMem[`${e.ui}-${e.ei}`]==='done').length;
   const againCnt = list.filter(e=>S.rvMem[`${e.ui}-${e.ei}`]==='again').length;
   return `<div class="rv-wrap">
@@ -688,7 +717,7 @@ function saveEx() {
 }
 function delEx(i) { S.units[S.unit].examples.splice(i,1); save(); render(); }
 function toggleDone() { S.units[S.unit].done = !S.units[S.unit].done; save(); render(); }
-function setFilter(f) { S.rvFilter=f; S.rvIdx=0; S.rvRevealed=false; render(); }
+function setFilter(f) { S.rvFilter=f; S.rvIdx=0; S.rvRevealed=false; S.rvRandomIdx=null; S.rvRandomPos=0; render(); }
 function toggleReveal() { S.rvRevealed=!S.rvRevealed; render(); }
 function setUnitPage(p) {
   const total = S.units.length;
@@ -705,7 +734,7 @@ function markRv(r) {
   const cur = list[S.rvIdx];
   S.rvMem[`${cur.ui}-${cur.ei}`] = r;
   S.rvRevealed = false;
-  S.rvIdx = (S.rvIdx+1) % list.length;
+  S.rvRandomPos = ((S.rvRandomPos||0) + 1) % list.length;
   save(); render();
 }
 function addUnitModal() {
@@ -836,6 +865,67 @@ function loadFromDrive() {
   }).catch(() => {});
 }
 
+
+/* ── 온보딩 ── */
+const OB_STEPS = [
+  {
+    title: 'Basic Grammar in Use\n문법 노트',
+    desc: 'Basic Grammar in Use 학습을 돕기 위한\n나만의 문법 노트입니다.',
+    btn: '다음'
+  },
+  {
+    title: '저작권 안내',
+    desc: '이 앱은 개인 학습용으로 제작되었습니다.\n책의 예문과 AI가 생성한 예문을 입력하여 사용하며 저작권을 침해하지 않습니다.',
+    btn: '다음'
+  },
+  {
+    title: '사용 방법',
+    desc: '유닛을 추가하고 핵심 문법과 예문을 직접 입력해보세요.\n복습 카드로 언제 어디서나 빠르게 암기할 수 있습니다.',
+    btn: '시작하기'
+  }
+];
+
+function showOnboarding() {
+  if (localStorage.getItem('gn-ob-done')) return;
+  let step = 0;
+  function render() {
+    const existing = document.getElementById('ob-modal');
+    if (existing) existing.remove();
+    const s = OB_STEPS[step];
+    const bg = document.createElement('div');
+    bg.className = 'ob-bg'; bg.id = 'ob-modal';
+    const dots = OB_STEPS.map((_,i) => `<div class="ob-dot ${i===step?'on':''}"></div>`).join('');
+    bg.innerHTML = `<div class="ob-sheet">
+      <div class="ob-icon">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="5" y="3" width="16" height="22" rx="2" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.7)" stroke-width="1.3"/>
+          <rect x="7.5" y="3" width="4" height="22" rx="1.5" fill="rgba(255,255,255,0.2)"/>
+          <line x1="11" y1="10" x2="18" y2="10" stroke="rgba(255,255,255,0.8)" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="11" y1="14" x2="18" y2="14" stroke="rgba(255,255,255,0.8)" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="11" y1="18" x2="15" y2="18" stroke="rgba(255,255,255,0.8)" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="24" cy="23" r="6" fill="#f0974a"/>
+          <text x="24" y="27" text-anchor="middle" font-size="8" font-weight="700" fill="#fff" font-family="Georgia,serif">A</text>
+        </svg>
+      </div>
+      <div class="ob-step">${step+1} / ${OB_STEPS.length}</div>
+      <div class="ob-title">${s.title.replace(/\n/g,'<br>')}</div>
+      <div class="ob-desc">${s.desc.replace(/\n/g,'<br>')}</div>
+      <div class="ob-dots">${dots}</div>
+      <button class="ob-btn" onclick="obNext()">${s.btn}</button>
+    </div>`;
+    document.body.appendChild(bg);
+  }
+  window.obNext = function() {
+    step++;
+    if (step >= OB_STEPS.length) {
+      document.getElementById('ob-modal').remove();
+      localStorage.setItem('gn-ob-done', '1');
+    } else {
+      render();
+    }
+  };
+  render();
+}
 loadLocal();
 loadScreen();
 // 유닛 상세 복원 시 hd-unit-bar 표시
@@ -846,6 +936,7 @@ if (S.screen === 'unit-detail' && S.unit !== null && S.units[S.unit]) {
   });
 }
 render();
+showOnboarding();
 // 화면 복원 후 네비바 상태 업데이트
 if (S.screen !== 'unit-detail') updateNav(S.screen);
 window.onload = () => initGapi();
